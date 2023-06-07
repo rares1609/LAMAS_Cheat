@@ -1,12 +1,12 @@
 import random
+from collections import Counter
 
 class Card:
-    def __init__(self, rank, suit):
+    def __init__(self, rank):
         self.rank = rank
-        self.suit = suit
 
     def __repr__(self):
-        return f"{self.rank} of {self.suit}"
+        return f"{self.rank}"
 
 class Player:
     def __init__(self, name, play_strategy, call_bluff_strategy, is_human= False):
@@ -15,15 +15,19 @@ class Player:
         self.play_strategy = play_strategy
         self.call_bluff_strategy = call_bluff_strategy
         self.is_human = is_human
+        self.pile_belief = []
+        self.card_belief = [[0 for _ in range(4)] for _ in range(3)]
 
     def play_card(self):
         if self.is_human:
-            print(f"Your hand: {self.hand}")
+            rank_counts = Counter(card.rank for card in self.hand)
+            hand_str = ', '.join(f"{count}{rank}" for rank, count in rank_counts.items())
+            print(f"Your hand: {hand_str}")
             action = input("Type the rank of the card you want to play: ").strip()
             for card in self.hand:
                 if card.rank == action:
                     self.hand.remove(card)
-                    return Card(action, card.suit)  # Return a new card with the claimed rank
+                    return Card(action)  # Return a new card with the claimed rank
             print("Invalid input. You don't have that rank. You lose your turn.")
             return None
         else:
@@ -39,6 +43,15 @@ class Player:
         card_to_play_rank = input("What rank do you want to claim the card has? ").strip()
         print("Human claimed:", card_to_play_rank)
         return card_to_play_rank
+    
+    def discard_three_of_a_kind(self, discard_pile):
+        rank_counts = Counter(card.rank for card in self.hand)
+        for rank, count in rank_counts.items():
+            if count == 3:
+                self.hand = [card for card in self.hand if card.rank != rank]
+                discard_pile.extend(Card(rank) for _ in range(3))
+                print(f"{self.name} discarded three {rank}s.")
+                break
 
 
     def take_pile(self, pile):
@@ -52,24 +65,58 @@ class Game:
     def __init__(self, players):
         self.players = players
         self.pile = []
+        self.discard_pile = []
         self.current_rank = None
         self.current_player_index = random.randint(0, len(self.players)-1)
 
     def deal(self):
-        deck = [Card(rank, suit) for rank in ['A', 'K', 'Q'] for suit in ['Red Heart', 'Black Heart', 'Diamond']]
-        random.shuffle(deck)
-        while deck:
+            while True: 
+                deck = [Card(rank) for rank in ['A', 'K', 'Q'] for _ in range(3)]  # remove suit here
+                random.shuffle(deck)
+                
+                # Clear each player's hand before dealing
+                for player in self.players:
+                    player.hand.clear()
+
+                # Deal the cards to the players
+                while deck:
+                    for player in self.players:  
+                        if deck:
+                            player.hand.append(deck.pop())
+                        
+                # Check if any player has three of the same rank
+                if any(Counter(card.rank for card in player.hand).most_common(1)[0][1] >= 3 for player in self.players):
+                    print("Reshuffling... a player had three cards of the same rank.")
+                    continue
+                
+                # If no player has three cards of the same rank, we can break the loop and continue
+                break
+
             for player in self.players:
-                if deck:
-                    player.hand.append(deck.pop())
+                rank_counts = Counter(card.rank for card in player.hand)
+                hand_str = ', '.join(f"{count}{rank}" for rank, count in rank_counts.items())
+                print(f"\n{player}'s hand: {hand_str}")
+
+                for card in player.hand: 
+                    if card == 'A':
+                        player.card_belief[0][0] = player.card_belief[0][0] + 1
+                    if card == 'Q':
+                        player.card_belief[0][1] = player.card_belief[0][1] + 1
+                    if card == 'K':
+                        player.card_belief[0][2] = player.card_belief[0][2] + 1
+                print(player.card_belief)
+
         
-        for player in self.players:
-            print(f"\n{player}'s hand: {player.hand}")
+        
 
     def play_turn(self):
         ok = False
-        # Get the current player
+
+        # Discard three of a kind at the start of the turn
+        for player in self.players:
+            player.discard_three_of_a_kind(self.discard_pile)
         
+        # Get the current player
         current_player = self.players[self.current_player_index] # it clashes with this  one 
 
         # Player's current turn print
@@ -230,6 +277,5 @@ if __name__ == "__main__":
     game = Game([player1, player2, player3])
 
     game.play_game()
-
 
 
