@@ -17,6 +17,7 @@ class Player:
         self.is_human = is_human
         self.pile_belief = []
         self.card_belief = [[0 for _ in range(4)] for _ in range(3)]
+        self.cards_played = []
 
     def play_card(self):
         if self.is_human:
@@ -27,6 +28,13 @@ class Player:
             for card in self.hand:
                 if card.rank == action:
                     self.hand.remove(card)
+                    self.cards_played.append(card)
+                    if card.rank == 'A':
+                        self.card_belief[0][0] = self.card_belief[0][0] - 1
+                    if card.rank == 'Q':
+                        self.card_belief[0][1] = self.card_belief[0][1] - 1
+                    if card.rank == 'K':
+                        self.card_belief[0][2] = self.card_belief[0][2] - 1
                     return Card(action)  # Return a new card with the claimed rank
             print("Invalid input. You don't have that rank. You lose your turn.")
             return None
@@ -98,13 +106,26 @@ class Game:
                 print(f"\n{player}'s hand: {hand_str}")
 
                 for card in player.hand: 
-                    if card == 'A':
+                    if card.rank == 'A':
                         player.card_belief[0][0] = player.card_belief[0][0] + 1
-                    if card == 'Q':
+                    if card.rank == 'Q':
                         player.card_belief[0][1] = player.card_belief[0][1] + 1
-                    if card == 'K':
+                    if card.rank == 'K':
                         player.card_belief[0][2] = player.card_belief[0][2] + 1
+                
+
+                # Add number of cards for each player at the current stage
+                for i in range(3):
+                    player.card_belief[i][3] = 3
+
+                # Unknown number of specific rank card for the other 2 players
+                # for i in [1, 2]:
+                #     for j in range(3):
+                #         player.card_belief[i][j] = -1
+
                 print(player.card_belief)
+
+                
 
         
         
@@ -148,12 +169,128 @@ class Game:
                     next_player.take_pile(self.pile)
                     print(f"{next_player} was wrong. {next_player} takes the pile.")
                     ok = True
+
+                    # find next next player
+                    copy = (self.current_player_index + 1) % len(self.players)
+                    next_next_player = self.players[(copy+1)%len(self.players)]
+                    # update for the other two players with the last card from the deck (the revealed one) for the player taking the pile
+                    if self.pile[-1].rank == 'A':
+                        # current_player.card_belief[2][0] = current_player.card_belief[2][0] + 1
+                        next_next_player.card_belief[1][0] = next_next_player.card_belief[1][0] + 1
+                    if self.pile[-1].rank == 'Q':
+                        # current_player.card_belief[2][1] = current_player.card_belief[2][1] + 1
+                        next_next_player.card_belief[1][1] = next_next_player.card_belief[1][1] + 1
+                    if self.pile[-1].rank == 'K':
+                        # current_player.card_belief[2][2] = current_player.card_belief[2][2] + 1
+                        next_next_player.card_belief[1][2] = next_next_player.card_belief[1][2] + 1
+
+                    # update cards belief for the other two agents based on what they put
+                    for card in current_player.cards_played:
+                        if card.rank == 'A':
+                            current_player.card_belief[2][0] = current_player.card_belief[2][0] + 1
+                        if card.rank == 'Q':
+                            current_player.card_belief[2][1] = current_player.card_belief[2][1] + 1
+                        if card.rank == 'K':
+                            current_player.card_belief[2][2] = current_player.card_belief[2][2] + 1
+                    
+                    for card in next_next_player.cards_played:
+                        if card.rank == 'A':
+                            next_next_player.card_belief[1][0] = next_next_player.card_belief[1][0] + 1
+                        if card.rank == 'Q':
+                            next_next_player.card_belief[1][1] = next_next_player.card_belief[1][1] + 1
+                        if card.rank == 'K':
+                            next_next_player.card_belief[1][2] = next_next_player.card_belief[1][2] + 1
+                   
+                    # update cards for the taker
+                    for card in self.pile:
+                        if card.rank == 'A':
+                            next_player.card_belief[0][0] = next_player.card_belief[0][0] + 1
+                        if card.rank == 'Q':
+                            next_player.card_belief[0][1] = next_player.card_belief[0][1] + 1
+                        if card.rank == 'K':
+                            next_player.card_belief[0][2] = next_player.card_belief[0][2] + 1
+
+                    # Update number of cards in hand per player 
+                    next_player.card_belief[0][3] = len(next_player.hand)
+                    next_player.card_belief[1][3] = len(current_player.hand)
+                    next_player.card_belief[2][3] = len(next_next_player.hand)
+
+                    next_next_player.card_belief[0][3] = len(next_next_player.hand)
+                    next_next_player.card_belief[1][3] = len(next_player.hand)
+                    next_next_player.card_belief[2][3] = len(current_player.hand)
+
+                    current_player.card_belief[0][3] = len(current_player.hand)
+                    current_player.card_belief[1][3] = len(next_next_player.hand)
+                    current_player.card_belief[2][3] = len(next_player.hand)
+
+                    
+                    print(current_player.card_belief)
+                    
+                        
+                        
+                    
                     
                 else:  
                     # The bluff was true, the current player was caught lying
                     # They take the pile
                     current_player.take_pile(self.pile)
                     print(f"{current_player} was caught lying. {current_player} takes the pile.")
+
+                    # find next next player
+                    copy = (self.current_player_index + 1) % len(self.players)
+                    next_next_player = self.players[(copy+1)%len(self.players)]
+
+                    # update for the other two players with the last card from the deck (the revealed one) for the player taking the pile
+                    if self.pile[-1].rank == 'A':
+                        # current_player.card_belief[2][0] = current_player.card_belief[2][0] + 1
+                        next_player.card_belief[1][0] = next_player.card_belief[1][0] + 1
+                    if self.pile[-1].rank == 'Q':
+                        # current_player.card_belief[2][1] = current_player.card_belief[2][1] + 1
+                        next_player.card_belief[1][1] = next_player.card_belief[1][1] + 1
+                    if self.pile[-1].rank == 'K':
+                        # current_player.card_belief[2][2] = current_player.card_belief[2][2] + 1
+                        next_player.card_belief[1][2] = next_player.card_belief[1][2] + 1
+
+                    # update cards belief for the other two agents based on what they put
+                    for card in next_player.cards_played:
+                        if card.rank == 'A':
+                            next_player.card_belief[1][0] = next_player.card_belief[1][0] + 1
+                        if card.rank == 'Q':
+                            next_player.card_belief[1][1] = next_player.card_belief[1][1] + 1
+                        if card.rank == 'K':
+                            next_player.card_belief[1][2] = next_player.card_belief[1][2] + 1
+                    
+                    for card in next_next_player.cards_played:
+                        if card.rank == 'A':
+                            next_next_player.card_belief[2][0] = next_next_player.card_belief[2][0] + 1
+                        if card.rank == 'Q':
+                            next_next_player.card_belief[2][1] = next_next_player.card_belief[2][1] + 1
+                        if card.rank == 'K':
+                            next_next_player.card_belief[2][2] = next_next_player.card_belief[2][2] + 1
+                   
+                    # update cards for the taker
+                    for card in self.pile:
+                        if card.rank == 'A':
+                            current_player.card_belief[0][0] = current_player.card_belief[0][0] + 1
+                        if card.rank == 'Q':
+                            current_player.card_belief[0][1] = current_player.card_belief[0][1] + 1
+                        if card.rank == 'K':
+                            current_player.card_belief[0][2] = current_player.card_belief[0][2] + 1
+
+                    # Update number of cards in hand per player 
+                    next_player.card_belief[0][3] = len(next_player.hand)
+                    next_player.card_belief[1][3] = len(current_player.hand)
+                    next_player.card_belief[2][3] = len(next_next_player.hand)
+
+                    next_next_player.card_belief[0][3] = len(next_next_player.hand)
+                    next_next_player.card_belief[1][3] = len(next_player.hand)
+                    next_next_player.card_belief[2][3] = len(current_player.hand)
+
+                    current_player.card_belief[0][3] = len(current_player.hand)
+                    current_player.card_belief[1][3] = len(next_next_player.hand)
+                    current_player.card_belief[2][3] = len(next_player.hand)
+
+                    print(current_player.card_belief)
                 
                 # After a bluff has been called, the pile is emptied
                 self.pile = []
@@ -165,8 +302,6 @@ class Game:
         if ok == False:
             self.current_player_index = (self.current_player_index + 1) % len(self.players)
         
-
-
     def game_over(self):
         for player in self.players:
             if len(player.hand) == 0:
@@ -180,7 +315,6 @@ class Game:
             self.play_turn()
             winner = self.game_over()
         print(f"{winner} is the winner!")
-
 
 # STRATEGY FUNCTIONS
 
