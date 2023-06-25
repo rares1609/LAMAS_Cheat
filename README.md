@@ -2,9 +2,9 @@
 Implementation of the Cheat! card game using multi-agent systems and public announcements.
 
 # Required libraries
-python        3.9.13
-matplotlib     3.5.2
-numpy         1.23.5
+python        3.9.13  
+matplotlib     3.5.2  
+numpy         1.23.5  
 
 # How to run it
 In order to run the game use the following command into the terminal: python cheat_simple.py  
